@@ -1,5 +1,4 @@
 import streamlit as st
-import pygame
 import cv2
 import speech_recognition as sr
 from deep_translator import GoogleTranslator
@@ -11,11 +10,12 @@ from transformers import (
 )
 import edge_tts
 import asyncio
+import tempfile
 import time
-pygame.mixer.init()
+
 st.set_page_config(page_title="AI Vision Assistant")
 
-st.title(" AI Vision Voice Assistant")
+st.title("🤖 AI Vision Voice Assistant")
 
 # ---------------- LANGUAGE OPTION ----------------
 
@@ -47,9 +47,6 @@ def load_model():
 
 processor, model = load_model()
 
-import tempfile
-import os
-
 # ---------------- SPEAK FUNCTION ----------------
 
 async def generate_voice(text, voice, filename):
@@ -76,7 +73,6 @@ def speak(text, lang="en"):
         "en-US-AriaNeural"
     )
 
-    # Create temporary mp3 file
     temp_audio = tempfile.NamedTemporaryFile(
         delete=False,
         suffix=".mp3"
@@ -110,14 +106,16 @@ def speak(text, lang="en"):
             )
         )
 
-    # Stop previous audio
-    pygame.mixer.music.stop()
+    audio_file = open(filename, "rb")
 
-    # Load new audio
-    pygame.mixer.music.load(filename)
+    audio_bytes = audio_file.read()
 
-    # Play automatically
-    pygame.mixer.music.play()
+    st.audio(
+        audio_bytes,
+        format="audio/mp3",
+        autoplay=True
+    )
+
 # ---------------- LISTEN FUNCTION ----------------
 
 def listen():
@@ -128,7 +126,7 @@ def listen():
 
         with sr.Microphone() as source:
 
-            st.write(" Listening...")
+            st.write("🎤 Listening...")
 
             recognizer.adjust_for_ambient_noise(
                 source,
@@ -141,7 +139,7 @@ def listen():
                 phrase_time_limit=5
             )
 
-            # Language based recognition
+            # Language selection
             if language_option == "Hindi":
 
                 text = recognizer.recognize_google(
@@ -165,7 +163,6 @@ def listen():
     except:
 
         return "", "en"
-
 
 # ---------------- CAMERA ----------------
 
@@ -219,7 +216,7 @@ while st.session_state.running:
     # Speak only when changed
     if caption != st.session_state.last_caption:
 
-        st.subheader(" Detected Scene")
+        st.subheader("📝 Detected Scene")
 
         st.write(caption)
 
@@ -232,7 +229,7 @@ while st.session_state.running:
 
     if user_voice != "":
 
-        st.subheader(" User Said")
+        st.subheader("🗣 User Said")
 
         st.write(user_voice)
 
@@ -256,13 +253,13 @@ while st.session_state.running:
 
             detected_lang = "en"
 
-        # Translate to English
+        # Translate question
         english_question = GoogleTranslator(
             source="auto",
             target="en"
         ).translate(user_voice)
 
-        # Smart assistant response
+        # Smart responses
         if "what did you say" in english_question.lower():
 
             answer = f"I said: {caption}"
@@ -282,17 +279,17 @@ while st.session_state.running:
                 f"I can see {caption}"
             )
 
-        # Translate back to user language
+        # Translate answer
         final_answer = GoogleTranslator(
             source="en",
             target=detected_lang
         ).translate(answer)
 
-        st.subheader(" Assistant")
+        st.subheader("🤖 Assistant")
 
         st.write(final_answer)
 
-        # Speak answer
+        # Speak automatically
         speak(final_answer, detected_lang)
 
     time.sleep(3)
