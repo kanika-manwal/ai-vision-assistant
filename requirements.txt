@@ -1,0 +1,12 @@
+streamlit
+transformers
+torch
+pillow
+opencv-python
+pyttsx3
+SpeechRecognition
+gtts
+pyaudio
+
+deep-translator
+langdetect
