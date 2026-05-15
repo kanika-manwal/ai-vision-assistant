@@ -295,4 +295,4 @@ while st.session_state.running:
     time.sleep(3)
 
 camera.release()
-cv2.destroyAllWindows()
+
