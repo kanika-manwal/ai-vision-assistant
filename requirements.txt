@@ -6,4 +6,5 @@ langdetect
 pillow
 transformers
 torch
+torchvision
 edge-tts
