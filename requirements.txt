@@ -10,3 +10,14 @@ pyaudio
 
 deep-translator
 langdetect
+streamlit
+opencv-python-headless
+speechrecognition
+deep-translator
+langdetect
+pillow
+transformers
+torch
+edge-tts
+pygame
+pyaudio
