@@ -2,7 +2,7 @@ streamlit
 transformers
 torch
 pillow
-opencv-python
+opencv-python-headless
 pyttsx3
 SpeechRecognition
 gtts
