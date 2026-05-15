@@ -1,5 +1,4 @@
 import streamlit as st
-import cv2
 import speech_recognition as sr
 from deep_translator import GoogleTranslator
 from langdetect import detect
@@ -11,7 +10,6 @@ from transformers import (
 import edge_tts
 import asyncio
 import tempfile
-import time
 
 st.set_page_config(page_title="AI Vision Assistant")
 
@@ -164,41 +162,15 @@ def listen():
 
         return "", "en"
 
-# ---------------- CAMERA ----------------
+# ---------------- IMAGE INPUT ----------------
 
-camera = cv2.VideoCapture(0)
+image = st.camera_input("Take a picture")
 
-frame_window = st.image([])
+if image is not None:
 
-if "last_caption" not in st.session_state:
-    st.session_state.last_caption = ""
+    img = Image.open(image).convert("RGB")
 
-if "running" not in st.session_state:
-    st.session_state.running = True
-
-stop = st.button("Stop Assistant")
-
-if stop:
-    st.session_state.running = False
-
-while st.session_state.running:
-
-    success, frame = camera.read()
-
-    if not success:
-
-        st.error("Camera not working")
-
-        break
-
-    rgb = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
-
-    frame_window.image(rgb)
-
-    img = Image.fromarray(rgb)
+    st.image(img)
 
     # Generate caption
     inputs = processor(
@@ -213,16 +185,12 @@ while st.session_state.running:
         skip_special_tokens=True
     )
 
-    # Speak only when changed
-    if caption != st.session_state.last_caption:
+    st.subheader("📝 Detected Scene")
 
-        st.subheader("📝 Detected Scene")
+    st.write(caption)
 
-        st.write(caption)
-
-        speak(caption)
-
-        st.session_state.last_caption = caption
+    # Speak caption
+    speak(caption)
 
     # Listen user
     user_voice, lang = listen()
@@ -291,8 +259,3 @@ while st.session_state.running:
 
         # Speak automatically
         speak(final_answer, detected_lang)
-
-    time.sleep(3)
-
-camera.release()
-
