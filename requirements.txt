@@ -7,6 +7,6 @@ Pillow
 transformers
 torch
 edge-tts
-pygame
+
 accelerate
 sentencepiece
