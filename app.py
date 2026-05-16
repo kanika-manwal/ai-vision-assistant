@@ -158,9 +158,7 @@ def listen():
 
 # ---------------- CAMERA ----------------
 
-camera = cv2.VideoCapture(0)
-
-frame_window = st.image([])
+uploaded_file = st.camera_input("Take a picture")
 
 if "last_caption" not in st.session_state:
     st.session_state.last_caption = ""
