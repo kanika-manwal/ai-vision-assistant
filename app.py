@@ -173,24 +173,13 @@ if stop:
 
 # ---------------- MAIN LOOP ----------------
 
-while st.session_state.running:
+if st.session_state.running:
 
-    success, frame = camera.read()
+    if uploaded_file is not None:
 
-    if not success:
+        img = Image.open(uploaded_file).convert("RGB")
 
-        st.error("Camera not working")
-
-        break
-
-    rgb = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
-
-    frame_window.image(rgb)
-
-    img = Image.fromarray(rgb)
+        st.image(img)
 
     # ---------------- SCENE UNDERSTANDING ----------------
 
@@ -278,6 +267,4 @@ while st.session_state.running:
 
     time.sleep(3)
 
-camera.release()
 
-cv2.destroyAllWindows()
