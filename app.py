@@ -1,5 +1,4 @@
 import streamlit as st
-import pygame
 import cv2
 import speech_recognition as sr
 from deep_translator import GoogleTranslator
@@ -18,11 +17,7 @@ import time
 
 st.set_page_config(page_title="AI Vision Assistant")
 
-st.title(" AI Vision Voice Assistant")
-
-# ---------------- PYGAME ----------------
-
-pygame.mixer.init()
+st.title("🤖 AI Vision Voice Assistant")
 
 # ---------------- LANGUAGE ----------------
 
@@ -104,11 +99,15 @@ def speak(text, lang="en"):
             )
         )
 
-    pygame.mixer.music.stop()
+    # Streamlit audio playback
+    with open(filename, "rb") as audio_file:
 
-    pygame.mixer.music.load(filename)
+        audio_bytes = audio_file.read()
 
-    pygame.mixer.music.play()
+        st.audio(
+            audio_bytes,
+            format="audio/mp3"
+        )
 
 # ---------------- LISTEN FUNCTION ----------------
 
