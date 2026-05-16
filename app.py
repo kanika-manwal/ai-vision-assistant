@@ -1,30 +1,34 @@
 import streamlit as st
+import pygame
+import cv2
 import speech_recognition as sr
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from PIL import Image
 from transformers import (
     BlipProcessor,
-    BlipForConditionalGeneration
+    BlipForQuestionAnswering
 )
 import edge_tts
 import asyncio
 import tempfile
+import time
+
+# ---------------- STREAMLIT ----------------
 
 st.set_page_config(page_title="AI Vision Assistant")
 
-st.title("🤖 AI Vision Voice Assistant")
+st.title(" AI Vision Voice Assistant")
 
-# ---------------- LANGUAGE OPTION ----------------
+# ---------------- PYGAME ----------------
+
+pygame.mixer.init()
+
+# ---------------- LANGUAGE ----------------
 
 language_option = st.selectbox(
-
     "Choose Language",
-
-    [
-        "English",
-        "Hindi"
-    ]
+    ["English", "Hindi"]
 )
 
 # ---------------- LOAD MODEL ----------------
@@ -33,15 +37,14 @@ language_option = st.selectbox(
 def load_model():
 
     processor = BlipProcessor.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
+        "Salesforce/blip-vqa-base"
     )
 
-    model = BlipForConditionalGeneration.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
+    model = BlipForQuestionAnswering.from_pretrained(
+        "Salesforce/blip-vqa-base"
     )
 
     return processor, model
-
 
 processor, model = load_model()
 
@@ -56,14 +59,11 @@ async def generate_voice(text, voice, filename):
 
     await communicate.save(filename)
 
-
 def speak(text, lang="en"):
 
     voice_map = {
-
         "en": "en-US-AriaNeural",
         "hi": "hi-IN-SwaraNeural"
-
     }
 
     voice = voice_map.get(
@@ -104,15 +104,11 @@ def speak(text, lang="en"):
             )
         )
 
-    audio_file = open(filename, "rb")
+    pygame.mixer.music.stop()
 
-    audio_bytes = audio_file.read()
+    pygame.mixer.music.load(filename)
 
-    st.audio(
-        audio_bytes,
-        format="audio/mp3",
-        autoplay=True
-    )
+    pygame.mixer.music.play()
 
 # ---------------- LISTEN FUNCTION ----------------
 
@@ -137,7 +133,6 @@ def listen():
                 phrase_time_limit=5
             )
 
-            # Language selection
             if language_option == "Hindi":
 
                 text = recognizer.recognize_google(
@@ -162,19 +157,51 @@ def listen():
 
         return "", "en"
 
-# ---------------- IMAGE INPUT ----------------
+# ---------------- CAMERA ----------------
 
-image = st.camera_input("Take a picture")
+camera = cv2.VideoCapture(0)
 
-if image is not None:
+frame_window = st.image([])
 
-    img = Image.open(image).convert("RGB")
+if "last_caption" not in st.session_state:
+    st.session_state.last_caption = ""
 
-    st.image(img)
+if "running" not in st.session_state:
+    st.session_state.running = True
 
-    # Generate caption
+stop = st.button("Stop Assistant")
+
+if stop:
+    st.session_state.running = False
+
+# ---------------- MAIN LOOP ----------------
+
+while st.session_state.running:
+
+    success, frame = camera.read()
+
+    if not success:
+
+        st.error("Camera not working")
+
+        break
+
+    rgb = cv2.cvtColor(
+        frame,
+        cv2.COLOR_BGR2RGB
+    )
+
+    frame_window.image(rgb)
+
+    img = Image.fromarray(rgb)
+
+    # ---------------- SCENE UNDERSTANDING ----------------
+
+    scene_question = "Describe this scene in detail"
+
     inputs = processor(
         img,
+        scene_question,
         return_tensors="pt"
     )
 
@@ -185,14 +212,20 @@ if image is not None:
         skip_special_tokens=True
     )
 
-    st.subheader("📝 Detected Scene")
+    # ---------------- SPEAK SCENE ----------------
 
-    st.write(caption)
+    if caption != st.session_state.last_caption:
 
-    # Speak caption
-    speak(caption)
+        st.subheader("📸 Detected Scene")
 
-    # Listen user
+        st.write(caption)
+
+        speak(caption)
+
+        st.session_state.last_caption = caption
+
+    # ---------------- USER VOICE ----------------
+
     user_voice, lang = listen()
 
     if user_voice != "":
@@ -201,53 +234,40 @@ if image is not None:
 
         st.write(user_voice)
 
-        # Safe language detection
+        # Detect language
+
         try:
 
             detected_lang = detect(user_voice)
-
-            supported_languages = [
-                "en",
-                "hi",
-                "fr",
-                "es",
-                "de"
-            ]
-
-            if detected_lang not in supported_languages:
-                detected_lang = "en"
 
         except:
 
             detected_lang = "en"
 
-        # Translate question
+        # Translate to English
+
         english_question = GoogleTranslator(
             source="auto",
             target="en"
         ).translate(user_voice)
 
-        # Smart responses
-        if "what did you say" in english_question.lower():
+        # ---------------- AI ANSWER ----------------
 
-            answer = f"I said: {caption}"
+        inputs = processor(
+            img,
+            english_question,
+            return_tensors="pt"
+        )
 
-        elif "what do you see" in english_question.lower():
+        output = model.generate(**inputs)
 
-            answer = f"I can see: {caption}"
+        answer = processor.decode(
+            output[0],
+            skip_special_tokens=True
+        )
 
-        elif "hello" in english_question.lower():
+        # Translate back
 
-            answer = "Hello, how can I help you?"
-
-        else:
-
-            answer = (
-                f"You asked: {english_question}. "
-                f"I can see {caption}"
-            )
-
-        # Translate answer
         final_answer = GoogleTranslator(
             source="en",
             target=detected_lang
@@ -257,5 +277,10 @@ if image is not None:
 
         st.write(final_answer)
 
-        # Speak automatically
         speak(final_answer, detected_lang)
+
+    time.sleep(3)
+
+camera.release()
+
+cv2.destroyAllWindows()
